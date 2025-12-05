@@ -24,7 +24,8 @@ MODEL = 'gemini-2.5-pro'
 
 # Flask setup
 app = Flask(__name__, static_folder='Frontend', static_url_path='')
-CORS(app)
+# Configure CORS to allow cross-origin downloads and expose Content-Disposition header
+CORS(app, resources={r"/*": {"origins": "*"}}, expose_headers=["Content-Disposition"]) 
 
 # CSV files
 STAFF_FILE = 'staff_data.csv'

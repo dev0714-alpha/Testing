@@ -531,17 +531,40 @@
             const fullCC = ccs.join('; ');
 
             try {
-                const res = await fetch(`${API_URL}/open_outlook`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        to: selectedAssigneeEmail,
-                        cc: fullCC, // Send full combined CC
-                        html_body: lastBotHtml
-                    })
-                });
-                const data = await res.json();
-                if(!data.success) alert("Error opening Outlook: " + (data.error || "Unknown error"));
+                    const res = await fetch(`${API_URL}/open_outlook`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            to: selectedAssigneeEmail,
+                            cc: fullCC, // Send full combined CC
+                            html_body: lastBotHtml
+                        })
+                    });
+
+                    // If server returned a downloadable .eml file, prompt download
+                    const contentType = res.headers.get('content-type') || '';
+                    if (res.ok && (contentType.includes('message/rfc822') || contentType.includes('application/octet-stream'))) {
+                        try {
+                            const blob = await res.blob();
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url; a.download = 'message.eml'; document.body.appendChild(a); a.click(); a.remove();
+                        } catch (err) {
+                            // Blob parsing sometimes fails due to CORS; surface headers and status for debugging
+                            const hdrs = {};
+                            for (const pair of res.headers.entries()) hdrs[pair[0]] = pair[1];
+                            alert('Failed to read download blob. HTTP ' + res.status + '\nHeaders: ' + JSON.stringify(hdrs) + '\nError: ' + String(err));
+                        }
+                    } else if (res.ok) {
+                        // Expect JSON success response
+                        const data = await res.json();
+                        if(!data.success) alert("Error opening Outlook: " + (data.error || "Unknown error"));
+                    } else {
+                        // Non-OK response: try to show JSON error or plain text
+                        let text = await res.text();
+                        try { const j = JSON.parse(text); alert("Error opening Outlook: " + (j.error || JSON.stringify(j))); }
+                        catch { alert("Error opening Outlook: " + text); }
+                    }
             } catch(e) {
                 alert("Failed to connect to server backend.");
             } finally {
