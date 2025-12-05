@@ -5,7 +5,8 @@ import tempfile
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import platform
-from flask import Flask, request, Response, stream_with_context, jsonify, send_from_directory
+from flask import Flask, request, Response, stream_with_context, jsonify, send_from_directory, send_file
+import io
 from flask_cors import CORS
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -131,7 +132,6 @@ CLASSIFY as Complaint or Concern and draft email.
 
     return Response(stream_with_context(generate()), mimetype='text/plain')
 
-# Cross-platform email fallback
 @app.route('/send_email', methods=['POST'])
 def send_email():
     data = request.json
@@ -141,7 +141,6 @@ def send_email():
     subject = data.get('subject', 'Customer Feedback Review')
 
     try:
-        # Use SMTP (example: Gmail) instead of Outlook COM
         smtp_server = os.getenv('SMTP_SERVER')
         smtp_port = int(os.getenv('SMTP_PORT', 587))
         smtp_user = os.getenv('SMTP_USER')
@@ -167,6 +166,92 @@ def send_email():
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/open_outlook', methods=['GET'])
+def open_outlook_form():
+        """Simple browser form to POST to `/open_outlook` for testing."""
+        return '''
+        <!doctype html>
+        <html>
+            <head><meta charset="utf-8"><title>Open Outlook - Test</title></head>
+            <body>
+                <h2>Open Outlook - Test Form</h2>
+                <form id="oform">
+                    <label>To: <input type="text" id="to" style="width:400px"></label><br><br>
+                    <label>Cc: <input type="text" id="cc" style="width:400px"></label><br><br>
+                    <label>HTML Body:</label><br>
+                    <textarea id="html_body" rows="10" cols="80">&lt;p&gt;&lt;strong&gt;Subject:&lt;/strong&gt; Test&lt;/p&gt;&lt;p&gt;Body here&lt;/p&gt;</textarea><br><br>
+                    <button type="button" onclick="submitForm()">Send</button>
+                </form>
+                <script>
+                async function submitForm(){
+                    const body = { to: document.getElementById('to').value, cc: document.getElementById('cc').value, html_body: document.getElementById('html_body').value };
+                    const res = await fetch('/open_outlook', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)});
+                    if(res.ok){
+                        const ct = res.headers.get('content-type') || '';
+                        if(ct.includes('message/rfc822') || ct.includes('application/octet-stream')){
+                            const blob = await res.blob(); const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a'); a.href = url; a.download = 'message.eml'; document.body.appendChild(a); a.click(); a.remove();
+                        } else {
+                            const j = await res.json(); alert(JSON.stringify(j));
+                        }
+                    } else { alert('Request failed: ' + res.status); }
+                }
+                </script>
+            </body>
+        </html>
+        '''
+
+
+@app.route('/open_outlook', methods=['POST'])
+def open_outlook():
+        data = request.json or {}
+        to_email = data.get('to', '')
+        cc_email = data.get('cc', '')
+        html_body = data.get('html_body', '')
+        subject = data.get('subject', 'Customer Feedback Review')
+
+        # Construct email HTML wrapper/styles
+        email_styles = """
+        <style>body{font-family:Calibri, sans-serif; font-size:11pt; color:#333}</style>
+        """
+        full_html = f"<html><head>{email_styles}</head><body>{html_body}</body></html>"
+
+        # Try Outlook COM on Windows if available
+        try:
+                if platform.system() == 'Windows':
+                        try:
+                                import win32com.client, pythoncom
+                                pythoncom.CoInitialize()
+                                outlook = win32com.client.Dispatch('outlook.application')
+                                mail = outlook.CreateItem(0)
+                                mail.To = to_email
+                                mail.CC = cc_email
+                                mail.Subject = subject
+                                mail.HTMLBody = full_html
+                                mail.Display()
+                                return jsonify({"success": True})
+                        except Exception as e:
+                                # Fall back to returning .eml
+                                print(f"Outlook COM failed: {e}")
+
+                # For non-Windows or when COM fails, return .eml as download
+                eml_parts = [f"To: {to_email}"]
+                if cc_email:
+                        eml_parts.append(f"Cc: {cc_email}")
+                eml_parts.append(f"Subject: {subject}")
+                eml_parts.append("X-Unsent: 1")
+                eml_parts.append("Content-Type: text/html; charset=utf-8")
+                eml_parts.append("")
+                eml_parts.append(full_html)
+                eml_content = "\n".join(eml_parts)
+                eml_bytes = eml_content.encode('utf-8')
+
+                return send_file(io.BytesIO(eml_bytes), mimetype='message/rfc822', as_attachment=True, download_name='message.eml')
+
+        except Exception as e:
+                return jsonify({"success": False, "error": str(e)}), 500
 
 # Main
 if __name__ == '__main__':
