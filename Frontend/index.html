@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prometheus</title>
+    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/3202/3202926.png" type="image/png">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Marked for Markdown Rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --bg-canvas: #f8fafc;
+        }
+
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--bg-canvas);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 20px;
+        }
+        .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+            background-color: #94a3b8;
+        }
+
+        /* Glassmorphism Utilities */
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        /* Animation Keyframes */
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .animate-enter {
+            animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Markdown Styling in Chat */
+        .prose-custom { font-size: 0.925rem; color: #334155; }
+        .prose-custom h3 { 
+            color: #1e293b; 
+            font-weight: 700; 
+            font-size: 1rem; 
+            margin-top: 1.5rem; 
+            margin-bottom: 0.75rem; 
+            padding-bottom: 0.25rem;
+            border-bottom: 2px solid #e2e8f0;
+            display: inline-block;
+        }
+        .prose-custom p { margin-bottom: 0.75rem; line-height: 1.6; }
+        .prose-custom strong { color: #0f172a; font-weight: 600; }
+        
+        /* Table Design */
+        .prose-custom table { 
+            width: 100%; 
+            border-collapse: separate; 
+            border-spacing: 0; 
+            margin: 1rem 0; 
+            font-size: 0.85rem; 
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .prose-custom th { 
+            background-color: #f8fafc; 
+            font-weight: 600; 
+            color: #475569; 
+            padding: 10px 12px; 
+            text-align: left; 
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .prose-custom td { 
+            padding: 10px 12px; 
+            border-bottom: 1px solid #f1f5f9; 
+            color: #334155;
+        }
+        .prose-custom tr:last-child td { border-bottom: none; }
+        .prose-custom tr:hover td { background-color: #f8fafc; }
+
+        /* Input Styling */
+        .modern-input {
+            width: 100%;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            color: #334155;
+            padding: 0.6rem 0.8rem;
+            border-radius: 0.75rem;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+        .modern-input:focus {
+            background-color: #ffffff;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+            outline: none;
+        }
+        .modern-input:disabled {
+            background-color: #f1f5f9;
+            color: #94a3b8;
+            cursor: not-allowed;
+        }
+        .modern-label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.35rem;
+        }
+
+        /* Mobile Sidebar Toggle */
+        #sidebar-toggle:checked ~ div #sidebar-content {
+            max-height: 1000px;
+            opacity: 1;
+            padding-bottom: 1rem;
+        }
+        
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden text-slate-800">
+
+    <!-- Navbar -->
+    <header class="glass border-b border-slate-200/60 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex items-center gap-3">
+                    <div class="bg-gradient-to-br from-blue-600 to-indigo-600 w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+                        <i class="fa-solid fa-car-side text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg leading-tight tracking-tight">Prometheus</h1>
+                        <p class="text-[11px] font-medium text-slate-500 uppercase tracking-wide">Feedback Assistant</p>
+                    </div>
+                </div>
+
+                <!-- Status Pill -->
+                <div class="hidden sm:flex items-center gap-2 bg-slate-100/80 px-3 py-1.5 rounded-full border border-slate-200">
+                    <span class="relative flex h-2 w-2">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    <span class="text-xs font-medium text-slate-600">System Online</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col lg:flex-row max-w-7xl w-full mx-auto p-4 gap-6 overflow-hidden">
+        
+        <!-- SIDEBAR: Configuration -->
+        <aside class="w-full lg:w-80 xl:w-96 flex flex-col gap-4 shrink-0 transition-all duration-300">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full lg:max-h-[calc(100vh-8rem)]">
+                
+                <!-- Sidebar Header (Mobile Toggle) -->
+                <div class="p-4 bg-slate-50/50 border-b border-slate-100 flex justify-between items-center lg:block">
+                    <div class="flex items-center gap-2 text-slate-700">
+                        <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                            <i class="fa-solid fa-sliders text-sm"></i>
+                        </div>
+                        <h2 class="font-semibold text-sm">Routing Configuration</h2>
+                    </div>
+                    <!-- Mobile Hamburger -->
+                    <label for="sidebar-toggle" class="lg:hidden p-2 text-slate-500 cursor-pointer">
+                        <i class="fa-solid fa-chevron-down transition-transform duration-300"></i>
+                    </label>
+                </div>
+
+                <input type="checkbox" id="sidebar-toggle" class="hidden peer">
+                
+                <!-- Scrollable Content -->
+                <div id="sidebar-content" class="peer-checked:max-h-0 lg:peer-checked:max-h-full max-h-0 lg:max-h-full opacity-0 lg:opacity-100 overflow-hidden lg:overflow-y-auto custom-scrollbar transition-all duration-300 ease-in-out">
+                    <div class="p-5 space-y-6">
+                        
+                        <!-- Section 1: Mandatory -->
+                        <div class="space-y-4">
+                            <div>
+                                <label class="modern-label">Department <span class="text-red-500">*</span></label>
+                                <div class="relative">
+                                    <select id="dept-select" class="modern-input appearance-none cursor-pointer">
+                                        <option value="" disabled selected>Select Department...</option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+                                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="modern-label">Assignee <span class="text-red-500">*</span></label>
+                                <div class="relative">
+                                    <select id="assignee-select" disabled class="modern-input appearance-none cursor-pointer">
+                                        <option value="" disabled selected>Select Staff...</option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+                                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- New CC Field (Auto-filled) -->
+                            <div>
+                                <label class="modern-label">Cc (Auto-filled)</label>
+                                <input type="text" id="cc-display" class="modern-input bg-slate-50 text-slate-500 italic" placeholder="Recipient emails..." readonly>
+                            </div>
+                        </div>
+
+                        <div class="h-px bg-slate-100 w-full"></div>
+
+                        <!-- Section 2: Optional -->
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wide">Ticket Details</h3>
+                                <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Optional</span>
+                            </div>
+
+                            <div class="grid grid-cols-1 gap-3">
+                                <!-- UPDATED: Service Adviser is now a Select -->
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="col-span-2">
+                                        <label class="modern-label">Service Adviser</label>
+                                        <div class="relative">
+                                            <select id="service-adviser" disabled class="modern-input appearance-none cursor-pointer">
+                                                <option value="" selected>Select Adviser...</option>
+                                            </select>
+                                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+                                                <i class="fa-solid fa-chevron-down text-xs"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="modern-label">Ticket ID</label>
+                                    <input type="text" id="ticket-id" class="modern-input" placeholder="e.g. TKT-2024-001">
+                                </div>
+                                
+                                <div>
+                                    <label class="modern-label">Customer Name</label>
+                                    <input type="text" id="customer-name" class="modern-input" placeholder="Client Name">
+                                </div>
+
+                                <div>
+                                    <label class="modern-label">Contact Info</label>
+                                    <input type="text" id="contact" class="modern-input" placeholder="Phone or Email">
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="modern-label">Vehicle No</label>
+                                        <input type="text" id="vehicle-no" class="modern-input" placeholder="AB-1234">
+                                    </div>
+                                    <div>
+                                        <label class="modern-label">Model</label>
+                                        <input type="text" id="model" class="modern-input" placeholder="Civic">
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="modern-label">Odometer</label>
+                                        <input type="text" id="km-hr" class="modern-input" placeholder="km">
+                                    </div>
+                                    <div>
+                                        <label class="modern-label">Location</label>
+                                        <input type="text" id="location" class="modern-input" placeholder="City">
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="modern-label">Source Channel</label>
+                                    <input type="text" id="source" class="modern-input" placeholder="e.g. Call, Email, Walk-in">
+                                </div>
+
+                                <div>
+                                    <label class="modern-label">Workshop</label>
+                                    <input type="text" id="workshop" class="modern-input" placeholder="Branch">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error Toast (Hidden by default) -->
+                <div id="config-status" class="bg-rose-50 border-t border-rose-100 p-3 flex items-center gap-3 text-rose-600 text-xs font-medium hidden animate-enter">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    Please select both Department & Assignee.
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN: Chat Interface -->
+        <section class="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
+            
+            <!-- Chat Header -->
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-white/80 backdrop-blur-sm z-10">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                    <h2 class="font-semibold text-slate-700 text-sm">Feedback Processor</h2>
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <!-- OUTLOOK BUTTON -->
+                    <button id="outlook-btn" onclick="openOutlook()" class="hidden text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20 flex items-center gap-1.5 px-3 py-1.5 rounded-lg active:scale-95">
+                        <i class="fa-brands fa-microsoft"></i> Open in Outlook
+                    </button>
+
+                    <button onclick="clearChat()" class="text-xs font-medium text-slate-400 hover:text-blue-600 transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-blue-50">
+                        <i class="fa-solid fa-rotate-right"></i> Reset
+                    </button>
+                </div>
+            </div>
+
+            <!-- Chat Messages Area -->
+            <div id="chat-container" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 custom-scrollbar bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed">
+                <!-- Empty State -->
+                <div id="empty-state" class="h-full flex flex-col items-center justify-center text-center opacity-60">
+                    <div class="w-20 h-20 bg-slate-100 rounded-2xl flex items-center justify-center mb-4 text-slate-300">
+                        <i class="fa-solid fa-inbox text-3xl"></i>
+                    </div>
+                    <h3 class="text-slate-900 font-semibold mb-1">Ready to Process</h3>
+                    <p class="text-sm text-slate-500 max-w-xs">Configure the routing details on the left, then paste the customer feedback below.</p>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="p-4 bg-white border-t border-slate-100 relative">
+                <form id="chat-form" class="relative group">
+                    <textarea 
+                        id="user-input" 
+                        rows="1" 
+                        placeholder="Paste customer feedback description here..." 
+                        class="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 pl-4 pr-14 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all text-sm resize-none shadow-sm placeholder:text-slate-400 custom-scrollbar max-h-32"
+                        required
+                    ></textarea>
+                    
+                    <button 
+                        type="submit" 
+                        id="send-btn"
+                        class="absolute right-2 bottom-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg w-9 h-9 flex items-center justify-center transition-all shadow-md shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none hover:scale-105 active:scale-95"
+                    >
+                        <i class="fa-solid fa-paper-plane text-xs"></i>
+                    </button>
+                </form>
+                <div class="text-center mt-2">
+                    <p class="text-[10px] text-slate-400">AI-generated drafts may require review.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        const API_URL = 'http://localhost:5000';
+        const deptSelect = document.getElementById('dept-select');
+        const assigneeSelect = document.getElementById('assignee-select');
+        const adviserSelect = document.getElementById('service-adviser'); // New Select
+        const ccDisplay = document.getElementById('cc-display'); 
+        const chatContainer = document.getElementById('chat-container');
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const configStatus = document.getElementById('config-status');
+        const emptyState = document.getElementById('empty-state');
+        const sendBtn = document.getElementById('send-btn');
+        const outlookBtn = document.getElementById('outlook-btn');
+
+        let selectedAssigneeEmail = '';
+        let selectedAssigneeCc = ''; 
+        let selectedAdviserEmail = ''; // Store Adviser Email
+        let lastBotHtml = ''; 
+
+        const getVal = (id) => document.getElementById(id).value.trim();
+
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+            if(this.value === '') this.style.height = 'auto';
+        });
+
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                chatForm.dispatchEvent(new Event('submit'));
+            }
+        });
+
+        function clearChat() {
+            chatContainer.innerHTML = '';
+            chatContainer.appendChild(emptyState);
+            emptyState.style.display = 'flex';
+            userInput.value = '';
+            userInput.style.height = 'auto';
+            configStatus.classList.add('hidden');
+            outlookBtn.classList.add('hidden');
+        }
+
+        function updateCCDisplay() {
+            let ccs = [];
+            if (selectedAssigneeCc) ccs.push(selectedAssigneeCc);
+            if (selectedAdviserEmail) ccs.push(selectedAdviserEmail);
+            ccDisplay.value = ccs.join('; ') || 'No CC mapped';
+        }
+
+        // 1. Initialize: Fetch Departments
+        async function init() {
+            try {
+                const res = await fetch(`${API_URL}/api/departments`);
+                const depts = await res.json();
+                depts.forEach(dept => {
+                    const option = document.createElement('option');
+                    option.value = dept;
+                    option.textContent = dept;
+                    deptSelect.appendChild(option);
+                });
+            } catch (err) {
+                console.error("Failed to load departments:", err);
+            }
+        }
+        init();
+
+        // 2. Handle Department Change
+        deptSelect.addEventListener('change', async (e) => {
+            const dept = e.target.value;
+            
+            // Reset Dropdowns
+            assigneeSelect.innerHTML = '<option value="" disabled selected>Loading...</option>';
+            adviserSelect.innerHTML = '<option value="" selected>Loading...</option>';
+            assigneeSelect.disabled = true;
+            adviserSelect.disabled = true; // Disable Adviser until Assignee is selected
+            
+            selectedAssigneeCc = '';
+            selectedAdviserEmail = '';
+            updateCCDisplay();
+
+            // Fetch Assignees
+            fetch(`${API_URL}/api/assignees?department=${encodeURIComponent(dept)}`)
+                .then(res => res.json())
+                .then(assignees => {
+                    assigneeSelect.innerHTML = '<option value="" disabled selected>Select Staff...</option>';
+                    assignees.forEach(staff => {
+                        const option = document.createElement('option');
+                        option.value = staff.name;
+                        option.dataset.email = staff.email;
+                        option.dataset.cc = staff.cc; 
+                        option.textContent = staff.name;
+                        assigneeSelect.appendChild(option);
+                    });
+                    assigneeSelect.disabled = false;
+                });
+        });
+
+        // 3. Handle Assignee Change - NOW FETCHES ADVISERS
+        assigneeSelect.addEventListener('change', (e) => {
+            const option = assigneeSelect.options[assigneeSelect.selectedIndex];
+            selectedAssigneeEmail = option.dataset.email;
+            selectedAssigneeCc = option.dataset.cc; 
+            const assigneeName = option.value;
+
+            // Reset Adviser
+            adviserSelect.innerHTML = '<option value="" selected>Loading...</option>';
+            adviserSelect.disabled = true;
+            selectedAdviserEmail = '';
+
+            updateCCDisplay();
+            configStatus.classList.add('hidden');
+
+            // Fetch Advisers mapped to THIS assignee
+            fetch(`${API_URL}/api/advisers?assignee=${encodeURIComponent(assigneeName)}`)
+                .then(res => res.json())
+                .then(advisers => {
+                    adviserSelect.innerHTML = '<option value="" selected>Select Adviser...</option>';
+                    advisers.forEach(adv => {
+                        const option = document.createElement('option');
+                        option.value = adv.name;
+                        option.dataset.email = adv.email;
+                        option.textContent = adv.name;
+                        adviserSelect.appendChild(option);
+                    });
+                    adviserSelect.disabled = false;
+                });
+        });
+
+        // 4. Handle Adviser Change
+        adviserSelect.addEventListener('change', (e) => {
+            const option = adviserSelect.options[adviserSelect.selectedIndex];
+            selectedAdviserEmail = option.value ? option.dataset.email : '';
+            updateCCDisplay();
+        });
+
+        // 5. Outlook Logic
+        async function openOutlook() {
+            if(!lastBotHtml) return;
+            const originalText = outlookBtn.innerHTML;
+            outlookBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Opening...';
+            
+            // Construct full CC string for Outlook
+            let ccs = [];
+            if (selectedAssigneeCc) ccs.push(selectedAssigneeCc);
+            if (selectedAdviserEmail) ccs.push(selectedAdviserEmail);
+            const fullCC = ccs.join('; ');
+
+            try {
+                const res = await fetch(`${API_URL}/open_outlook`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        to: selectedAssigneeEmail,
+                        cc: fullCC, // Send full combined CC
+                        html_body: lastBotHtml
+                    })
+                });
+                const data = await res.json();
+                if(!data.success) alert("Error opening Outlook: " + (data.error || "Unknown error"));
+            } catch(e) {
+                alert("Failed to connect to server backend.");
+            } finally {
+                outlookBtn.innerHTML = originalText;
+            }
+        }
+
+        // 6. Handle Form Submission
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!deptSelect.value || !assigneeSelect.value) {
+                configStatus.classList.remove('hidden');
+                return;
+            }
+
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            emptyState.style.display = 'none';
+            addMessageBubble(message, true);
+            userInput.value = '';
+            userInput.style.height = 'auto';
+            sendBtn.disabled = true;
+            
+            const botId = Date.now();
+            addBotLoader(botId);
+            
+            try {
+                const response = await fetch(`${API_URL}/process_feedback`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        message: message,
+                        department: deptSelect.value,
+                        assignee_name: assigneeSelect.value,
+                        assignee_email: selectedAssigneeEmail,
+                        assignee_cc: selectedAssigneeCc,
+                        
+                        // Pass new Adviser Data
+                        service_adviser: adviserSelect.value,
+                        service_adviser_email: selectedAdviserEmail,
+
+                        ticket_id: getVal('ticket-id'),
+                        customer_name: getVal('customer-name'),
+                        contact: getVal('contact'),
+                        vehicle_no: getVal('vehicle-no'),
+                        model: getVal('model'),
+                        km_hr: getVal('km-hr'),
+                        location: getVal('location'),
+                        source: getVal('source'),
+                        workshop: getVal('workshop')
+                    })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullResponse = "";
+                
+                const loader = document.getElementById(`loader-${botId}`);
+                if(loader) loader.remove();
+                
+                addMessageBubble("", false, botId); 
+                const botBubbleContent = document.getElementById(`msg-content-${botId}`);
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    const textChunk = decoder.decode(value, { stream: true });
+                    fullResponse += textChunk;
+                    
+                    lastBotHtml = marked.parse(fullResponse); 
+                    botBubbleContent.innerHTML = lastBotHtml;
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+
+                outlookBtn.classList.remove('hidden');
+
+            } catch (error) {
+                console.error(error);
+                const loader = document.getElementById(`loader-${botId}`);
+                if(loader) {
+                    loader.innerHTML = '<span class="text-red-500">Error connecting to server.</span>';
+                }
+            } finally {
+                sendBtn.disabled = false;
+                userInput.focus();
+            }
+        });
+
+        function addMessageBubble(content, isUser, id=null) {
+            const div = document.createElement('div');
+            div.className = `flex gap-4 animate-enter mb-6 ${isUser ? 'flex-row-reverse' : ''}`;
+            
+            const avatar = isUser 
+                ? `<div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0 text-white shadow-lg shadow-slate-200"><i class="fa-solid fa-user text-sm"></i></div>`
+                : `<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0 text-white shadow-lg shadow-blue-200"><i class="fa-solid fa-robot text-sm"></i></div>`;
+
+            const bubbleStyle = isUser 
+                ? 'bg-slate-800 text-white rounded-2xl rounded-tr-sm px-5 py-3 shadow-md max-w-[85%]' 
+                : 'bg-white border border-slate-100 text-slate-700 rounded-2xl rounded-tl-sm px-6 py-5 shadow-sm max-w-[95%] w-full prose-custom';
+
+            div.innerHTML = `
+                ${avatar}
+                <div class="flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-full overflow-hidden">
+                    <div ${id ? `id="msg-content-${id}"` : ''} class="${bubbleStyle} overflow-x-auto">
+                        ${isUser ? content : ''}
+                    </div>
+                </div>
+            `;
+            chatContainer.appendChild(div);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function addBotLoader(id) {
+            const div = document.createElement('div');
+            div.id = `loader-${id}`;
+            div.className = `flex gap-4 animate-enter mb-6`;
+            div.innerHTML = `
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0 text-white shadow-lg shadow-blue-200">
+                    <i class="fa-solid fa-robot text-sm"></i>
+                </div>
+                <div class="bg-white border border-slate-100 rounded-2xl rounded-tl-sm px-6 py-4 shadow-sm flex items-center gap-3">
+                    <div class="flex space-x-1">
+                        <div class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0s"></div>
+                        <div class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                        <div class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                    </div>
+                    <span class="text-xs font-medium text-slate-400">Drafting Response...</span>
+                </div>
+            `;
+            chatContainer.appendChild(div);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    </script>
+</body>
+</html>

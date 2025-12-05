@@ -1,0 +1,17 @@
+[project]
+name = "ai-chatbot"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.123.0",
+    "flask>=3.1.2",
+    "flask-cors>=6.0.1",
+    "openai>=2.8.1",
+    "python-dotenv>=1.2.1",
+    # Windows-only dependency removed for cross-platform deployment
+    # pywin32 is optional for Outlook COM integration on Windows; it's not required on Render (Linux)
+    "gunicorn>=20.1.0",
+    "uvicorn>=0.38.0",
+]
